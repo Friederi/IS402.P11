@@ -3,8 +3,9 @@ package org.myorg.quickstart;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.io.IOException;
 import org.apache.flink.api.common.serialization.AbstractDeserializationSchema;
+
+import java.io.IOException;
 
 public class TransactionDeserializationSchema extends AbstractDeserializationSchema<Transaction> {
     private static final long serialVersionUUID = 1L;

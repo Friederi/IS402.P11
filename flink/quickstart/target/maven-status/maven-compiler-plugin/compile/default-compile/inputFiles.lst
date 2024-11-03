@@ -1,3 +1,3 @@
-/home/ngochoang/Workspace/cloud/quickstart/src/main/java/org/myorg/quickstart/DataStreamJob.java
-/home/ngochoang/Workspace/cloud/quickstart/src/main/java/org/myorg/quickstart/TransactionDeserializationSchema.java
-/home/ngochoang/Workspace/cloud/quickstart/src/main/java/org/myorg/quickstart/Transaction.java
+/home/ngochoang/Workspace/quickstart/src/main/java/org/myorg/quickstart/TransactionDeserializationSchema.java
+/home/ngochoang/Workspace/quickstart/src/main/java/org/myorg/quickstart/Transaction.java
+/home/ngochoang/Workspace/quickstart/src/main/java/org/myorg/quickstart/DataStreamJob.java
