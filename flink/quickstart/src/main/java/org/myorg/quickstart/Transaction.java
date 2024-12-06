@@ -17,14 +17,12 @@ public class Transaction {
     private Instant transactionDate;
     private String paymentMethod;
     private String storeId;
-    private Double totalAmount;
 
     public Transaction() {
     }
 
     @JsonCreator
     public Transaction(@JsonProperty("transactionId") String transactionId,
-                       @JsonProperty("totalAmount") Double totalAmount,
                        @JsonProperty("storeId") String storeId,
                        @JsonProperty("paymentMethod") String paymentMethod,
                        @JsonProperty("transactionDate") Instant transactionDate,
@@ -36,7 +34,6 @@ public class Transaction {
                        @JsonProperty("productName") String productName,
                        @JsonProperty("productId") String productId) {
         this.transactionId = transactionId;
-        this.totalAmount = totalAmount;
         this.storeId = storeId;
         this.paymentMethod = paymentMethod;
         this.transactionDate = transactionDate;
@@ -47,14 +44,6 @@ public class Transaction {
         this.productCategory = productCategory;
         this.productName = productName;
         this.productId = productId;
-    }
-
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
     }
 
     public String getStoreId() {

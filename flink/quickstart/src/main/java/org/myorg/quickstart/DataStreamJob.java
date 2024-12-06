@@ -1,9 +1,7 @@
 package org.myorg.quickstart;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
@@ -18,6 +16,7 @@ public class DataStreamJob {
 	public static void main(String[] args) throws Exception {
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+
 		KafkaSource<Transaction> kafkaSource = KafkaSource.<Transaction>builder()
 				.setBootstrapServers("localhost:9092")
 				.setTopics("financial_transactions")
@@ -30,23 +29,20 @@ public class DataStreamJob {
 				WatermarkStrategy.noWatermarks(),
 				"kafkaSource");
 
-		DataStream<Tuple2<Double, Integer>> revenueAndQuantityStream = transactions
+		// TÍnh tổng doanh thu và số lượng sản phẩm
+		DataStream<Tuple2<Double, Integer>> totalAndQuantityStream = transactions
 				.map(transaction -> new Tuple2<>(transaction.getProductQuantity() * transaction.getProductPrice(),
 						transaction.getProductQuantity()))
 				.returns(new TypeHint<Tuple2<Double, Integer>>(){})
 				.keyBy(value -> {
 					return 1;
 				})
-				.reduce(new ReduceFunction<Tuple2<Double, Integer>>() {
-					@Override
-					public Tuple2<Double, Integer> reduce(Tuple2<Double, Integer> value1,
-														  Tuple2<Double, Integer> value2) {
-						return new Tuple2<>(value1.f0 + value2.f0, value1.f1 + value2.f1);
-					}
+				.reduce((v1, v2) -> {
+						return new Tuple2<>(v1.f0 + v2.f0, v1.f1 + v2.f1);
 				});
 
-		revenueAndQuantityStream.addSink(JdbcSink.sink(
-				"insert into revenueandquantity (revenue, quantity, transaction_time) values (?, ?, default);",
+		totalAndQuantityStream.addSink(JdbcSink.sink(
+				"insert into total_revenue (revenue, quantity, transaction_time) values (?, ?, default);",
 				(statement, event) -> {
 					statement.setDouble(1, event.f0);
 					statement.setInt(2, event.f1);
@@ -65,19 +61,26 @@ public class DataStreamJob {
 		));
 
 		// Tính doanh thu theo từng sản phẩm
-		DataStream<Tuple2<String, Double>> revenueByProductStream = transactions
-				.map(transaction -> new Tuple2<>(transaction.getProductId(),
+		DataStream<ProductSales> productSalesStream = transactions
+				.map(transaction -> new ProductSales(transaction.getProductId(),transaction.getProductName(),
+						transaction.getProductQuantity(),
 						transaction.getProductQuantity() * transaction.getProductPrice()))
-				.returns(new TypeHint<Tuple2<String, Double>>() {})
-				.keyBy(value -> value.f0)
-				.sum(1);
+				.returns(ProductSales.class)
+				.keyBy(ProductSales::getProductId)
+				.reduce((p1,p2)->{
+					return new ProductSales(p1.getProductId(), p1.getProductName(),
+							p1.getProductQuantity() + p2.getProductQuantity(),
+							p1.getRevenue() + p2.getRevenue());
+				});
 
-		revenueByProductStream.addSink(JdbcSink.sink(
-				"insert into revenueofproduct (product_id, revenue, transaction_time) values (?, ?, default) " +
-					"on conflict (product_id) do update set revenue = excluded.revenue, transaction_time = now()",
+		productSalesStream.addSink(JdbcSink.sink(
+				"insert into product_sales (product_id, product_name, quantity, revenue, transaction_time) values (?, ?, ?, ?, default) " +
+					"on conflict (product_id) do update set quantity = excluded.quantity, revenue = excluded.revenue, transaction_time = now()",
 				(statement, event) -> {
-					statement.setString(1, event.f0);
-					statement.setDouble(2, event.f1);
+					statement.setString(1, event.getProductId());
+					statement.setString(2, event.getProductName());
+					statement.setInt(3, event.getProductQuantity());
+					statement.setDouble(4, event.getRevenue());
 				},
 				JdbcExecutionOptions.builder()
 						.withBatchSize(1000)
@@ -93,19 +96,23 @@ public class DataStreamJob {
 		));
 
 		// Tính doanh thu theo từng cửa hàng
-		DataStream<Tuple2<String, Double>> revenueByStoreStream = transactions
-				.map(transaction -> new Tuple2<>(transaction.getStoreId(),
+		DataStream<StoreSales> storeSalesStream = transactions
+				.map(transaction -> new StoreSales(transaction.getStoreId(), transaction.getProductQuantity(),
 						transaction.getProductQuantity() * transaction.getProductPrice()))
-				.returns(new TypeHint<Tuple2<String, Double>>() {})
-				.keyBy(value -> value.f0)
-				.sum(1);
+				.returns(StoreSales.class)
+				.keyBy(StoreSales::getStoreId)
+				.reduce((s1,s2)->{
+					return new StoreSales(s1.getStoreId(),s1.getProductQuantity()+s2.getProductQuantity(),
+							s1.getRevenue() + s2.getRevenue());
+				});
 
-		revenueByStoreStream.addSink(JdbcSink.sink(
-				"insert into revenueofstore (store_id, revenue, transaction_time) values (?, ?, default) " +
-						"on conflict (store_id) do update set revenue = excluded.revenue, transaction_time = now()",
+		storeSalesStream.addSink(JdbcSink.sink(
+				"insert into store_sales (store_id, quantity, revenue, transaction_time) values (?, ?, ?, default) " +
+						"on conflict (store_id) do update set quantity = excluded.quantity, revenue = excluded.revenue, transaction_time = now()",
 				(statement, event) -> {
-					statement.setString(1, event.f0);
-					statement.setDouble(2, event.f1);
+					statement.setString(1, event.getStoreId());
+					statement.setInt(2, event.getProductQuantity());
+					statement.setDouble(3, event.getRevenue());
 				},
 				JdbcExecutionOptions.builder()
 						.withBatchSize(1000)
