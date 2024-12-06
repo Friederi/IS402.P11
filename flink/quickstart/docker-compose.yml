@@ -2,7 +2,7 @@
 version: '3.9'
 
 services:
-  db:
+  postgres:
     container_name: postgres_container
     image: postgres
     environment:
@@ -10,11 +10,11 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_DB: store
     volumes:
-      - postgres:/data/postgres
+      - postgres-data:/var/lib/postgresql/data
       - ./document/sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     restart: always
 
 volumes:
-  postgres:
+  postgres-data:
