@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.myorg.quickstart;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -18,18 +36,17 @@ public class DataStreamJob {
 
 
 		KafkaSource<Transaction> kafkaSource = KafkaSource.<Transaction>builder()
-				.setBootstrapServers("localhost:9092")
+				.setBootstrapServers("kafka:29092")
 				.setTopics("financial_transactions")
 				.setGroupId("flink-consumer-group")
 				.setStartingOffsets(OffsetsInitializer.earliest())
 				.setValueOnlyDeserializer(new TransactionDeserializationSchema())
 				.build();
-
+		
 		DataStream<Transaction> transactions = env.fromSource(kafkaSource,
 				WatermarkStrategy.noWatermarks(),
 				"kafkaSource");
 
-		// TÍnh tổng doanh thu và số lượng sản phẩm
 		DataStream<Tuple2<Double, Integer>> totalAndQuantityStream = transactions
 				.map(transaction -> new Tuple2<>(transaction.getProductQuantity() * transaction.getProductPrice(),
 						transaction.getProductQuantity()))
@@ -53,7 +70,7 @@ public class DataStreamJob {
 						.withMaxRetries(5)
 						.build(),
 				new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-						.withUrl("jdbc:postgresql://localhost:5432/store")
+						.withUrl("jdbc:postgresql://postgres:5432/store")
 						.withDriverName("org.postgresql.Driver")
 						.withUsername("root")
 						.withPassword("root")
@@ -88,7 +105,7 @@ public class DataStreamJob {
 						.withMaxRetries(5)
 						.build(),
 				new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-						.withUrl("jdbc:postgresql://localhost:5432/store")
+						.withUrl("jdbc:postgresql://postgres:5432/store")
 						.withDriverName("org.postgresql.Driver")
 						.withUsername("root")
 						.withPassword("root")
@@ -120,7 +137,7 @@ public class DataStreamJob {
 						.withMaxRetries(5)
 						.build(),
 				new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-						.withUrl("jdbc:postgresql://localhost:5432/store")
+						.withUrl("jdbc:postgresql://postgres:5432/store")
 						.withDriverName("org.postgresql.Driver")
 						.withUsername("root")
 						.withPassword("root")

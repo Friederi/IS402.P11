@@ -1,0 +1,81 @@
+# Use postgres/example user/password credentials
+version: '3.9'
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: store
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+      - "./document/sql:/docker-entrypoint-initdb.d"
+    ports:
+      - "5432:5432"
+    restart: always
+
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper_data:/bitnami/zookeeper"
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    restart: always
+
+  kafka: ### single node
+      image: docker.io/bitnami/kafka:3.8
+      container_name: kafka
+      ports:
+        - "9092:9092"    # Cho kết nối từ ngoài container
+        - "29092:29092"  # Cho kết nối từ trong container
+      environment:
+        KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092
+        KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+        KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+        KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_CREATE_TOPICS: "financial_transactions:1:1"
+      volumes:
+        - "kafka_data:/bitnami"
+      depends_on:
+        - zookeeper
+      restart: always
+  jobmanager:
+    image: flink:1.19.1-scala_2.12-java11
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+    depends_on:
+      - postgres
+
+  taskmanager:
+    image: flink:1.19.1-scala_2.12-java11
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    scale: 1
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2 
+
+volumes:
+  postgres_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local
+
+
